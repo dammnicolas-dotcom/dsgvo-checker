@@ -34,6 +34,28 @@ class VerantwortlicherTest(unittest.TestCase):
         text = "Verantwortliche Stelle ist die Musterfirma GmbH, Musterstraße 5, 12345 Musterstadt."
         self.assertTrue(pruefe_verantwortlicher(text).gefunden)
 
+    def test_gefunden_ueber_verantwortlicher_ist(self):
+        # Blinder Fleck aus eigene_tests/test_unvollstaendig.md: "Verantwortlicher
+        # ist ..." ohne "im Sinne der DSGVO" oder "für die Verarbeitung".
+        text = "Verantwortlicher ist die Musterfirma GmbH, Musterstraße 1, 10115 Berlin."
+        self.assertTrue(pruefe_verantwortlicher(text).gefunden)
+
+    def test_gefunden_ueber_zustaendig_fuer_die_datenverarbeitung(self):
+        # Blinder Fleck aus eigene_tests/test_umformuliert.md.
+        text = (
+            "Wer für die Datenverarbeitung zuständig ist: Die Betreiberin dieser "
+            "Webseite, erreichbar unter info@beispiel.de."
+        )
+        self.assertTrue(pruefe_verantwortlicher(text).gefunden)
+
+    def test_treffer_leer_wenn_nicht_gefunden(self):
+        # Regression: FEHLT-Ergebnisse dürfen keine (irreführende) Treffer-Liste
+        # zeigen, auch wenn nur einer der beiden Teile (Bezeichner/Kontakt) matcht.
+        text = "Erreichen Sie uns unter kontakt@example.com oder telefonisch."
+        ergebnis = pruefe_verantwortlicher(text)
+        self.assertFalse(ergebnis.gefunden)
+        self.assertEqual(ergebnis.treffer, [])
+
     def test_fehlt_ohne_kontaktdaten(self):
         # Bezeichnung allein reicht nicht - Art. 13 Abs. 1 lit. a fordert
         # zusätzlich konkrete Kontaktangaben.
@@ -65,6 +87,18 @@ class ZweckTest(unittest.TestCase):
 
     def test_gefunden_ueber_wir_verarbeiten_ihre_daten_fuer(self):
         text = "Wir verarbeiten Ihre Daten für die Zusendung unseres Newsletters."
+        self.assertTrue(pruefe_zweck(text).gefunden)
+
+    def test_gefunden_ueber_nutzen_ihre_angaben_um(self):
+        # Blinder Fleck aus eigene_tests/test_umformuliert.md: "nutzen" statt
+        # "verarbeiten", ohne das Wort "Zweck".
+        text = "Zweck: Wir nutzen Ihre Angaben, um Ihnen unseren Newsletter zuzusenden."
+        self.assertTrue(pruefe_zweck(text).gefunden)
+
+    def test_gefunden_ueber_daten_werden_zur_bearbeitung_genutzt(self):
+        # Blinder Fleck aus eigene_tests/test_unvollstaendig.md: Passivsatz ohne
+        # die Wörter "Zweck" oder "verarbeiten".
+        text = "Ihre Daten werden zur Bearbeitung Ihrer Anfrage genutzt."
         self.assertTrue(pruefe_zweck(text).gefunden)
 
     def test_fehlt(self):
@@ -155,6 +189,13 @@ class SpeicherdauerTest(unittest.TestCase):
         )
         self.assertTrue(pruefe_speicherdauer(text).gefunden)
 
+    def test_gefunden_ueber_fuer_maximal_x_monate(self):
+        # Blinder Fleck aus eigene_tests/test_unvollstaendig.md: Zahl + Zeiteinheit
+        # in umgekehrter Reihenfolge ("Speicherung ... für maximal 12 Monate")
+        # ohne die Formulierung "Dauer von".
+        text = "Die Speicherung erfolgt für maximal 12 Monate."
+        self.assertTrue(pruefe_speicherdauer(text).gefunden)
+
 
 class BetroffenenrechteTest(unittest.TestCase):
     def test_gefunden_ueber_generische_ueberschrift(self):
@@ -230,13 +271,17 @@ class GesamtreportTest(unittest.TestCase):
 class GrenzfaelleTest(unittest.TestCase):
     """Pinnt bekannte Grenzen der Muster-basierten Erkennung (siehe README)."""
 
-    def test_umformulierter_text_wird_trotz_plausiblem_inhalt_nicht_erkannt(self):
+    def test_umformulierter_text_bleibt_ueberwiegend_unerkannt(self):
         # examples/beispiel_umformuliert.md ist inhaltlich vertretbar vollständig,
-        # nutzt aber durchgehend Formulierungen abseits der Regex-Muster - ein
-        # bekannter falsch-negativer Grenzfall, kein Bug.
+        # nutzt aber durchgehend Formulierungen abseits der Regex-Muster. Die
+        # Zweck-Erweiterung ("nutzen ... Angaben ... um") erkennt inzwischen den
+        # Zweck-Satz - Verantwortlicher ("Betreiber"), Rechtsgrundlage,
+        # Speicherdauer und Betroffenenrechte (Aufzählung ohne "Recht auf")
+        # bleiben weiterhin bekannte falsch-negative Grenzfälle, kein Bug.
         pfad = PROJEKT_ROOT / "examples" / "beispiel_umformuliert.md"
         ergebnisse = pruefe_datenschutzerklaerung(lade_datenschutzerklaerung(pfad))
-        self.assertTrue(all(not e.gefunden for e in ergebnisse))
+        gefundene_ids = [e.id for e in ergebnisse if e.gefunden]
+        self.assertEqual(gefundene_ids, ["zweck"])
 
     def test_falscher_kontext_erzeugt_keinen_treffer_mehr(self):
         # examples/beispiel_falscher_kontext.md erwähnt "Rechtsgrundlage" im

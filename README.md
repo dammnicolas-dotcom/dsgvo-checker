@@ -65,7 +65,7 @@ Voraussetzung: Python 3.9+ (keine externen Abhängigkeiten).
    python3 -m unittest discover -s tests -v
    ```
 
-   Erwartung: alle Tests laufen mit `OK` durch (Stand: 51 Tests).
+   Erwartung: alle Tests laufen mit `OK` durch (Stand: 59 Tests).
 
 2. **Smoke-Test gegen die Beispieldateien** – prüft den Report und den
    Exit-Code an einem bekannten Fall:
@@ -101,12 +101,19 @@ Ein konkreter, bewusst angelegter Grenzfall (als Regressionstest in
 
 - **Falsch-negativ** (`examples/beispiel_umformuliert.md`): Der Text ist
   inhaltlich vertretbar vollständig, verwendet aber durchgehend
-  Formulierungen abseits der hinterlegten Muster (z.B. "Betreiber dieser
-  Seite" statt "Verantwortlicher") und wird deshalb mit 0/5 bewertet.
+  Formulierungen abseits der hinterlegten Muster. Der Zweck-Satz ("Wir
+  nutzen Ihre Angaben, um ...") wird inzwischen erkannt, die übrigen vier
+  Formulierungen (u.a. "Betreiber dieser Seite" statt "Verantwortlicher",
+  Rechte-Aufzählung ohne "Recht auf") bleiben unerkannt — das Beispiel
+  liefert konstant 1/5.
 
 Das ist erwartetes Verhalten eines Keyword-/Regex-Ansatzes ohne
 semantisches Verständnis, kein Bug. Es zeigt, wo künftige
-Mustererweiterungen ansetzen könnten.
+Mustererweiterungen ansetzen könnten. Ein besonders hartnäckiger Fall ist
+die Nennung von Rechten ohne das Wort "Recht auf" (z.B. "Sie können
+jederzeit Auskunft verlangen") — das lässt sich mit dem aktuellen Ansatz
+nur mit hohem Risiko für neue Falsch-positive verlässlich erkennen und
+wurde daher bewusst nicht angegangen.
 
 `examples/beispiel_falscher_kontext.md` deckte ursprünglich einen
 Falsch-positiv-Fall auf: "Rechtsgrundlage" im Kontext der AGB statt der

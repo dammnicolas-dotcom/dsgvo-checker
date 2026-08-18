@@ -36,6 +36,8 @@ VERANTWORTLICHER_MUSTER = [
     r"verantwortlich(?:e|er|en)?\s+(?:im\s+sinne\s+der\s+dsgvo|f(?:ü|ue)r\s+die\s+(?:daten-?verarbeitung|verarbeitung))",
     r"kontaktdaten\s+des\s+verantwortlichen",
     r"verantwortliche\s+stelle",
+    r"verantwortlich(?:e|er|en)?\s+ist\b",
+    r"f(?:ü|ue)r\s+die\s+(?:daten-?verarbeitung|verarbeitung)\s+zust(?:ä|ae)ndig",
 ]
 # Reine Nennung von "verantwortlich" reicht nicht - es braucht zusätzlich
 # tatsächliche Kontaktangaben (Art. 13 Abs. 1 lit. a fordert Name UND Kontaktdaten).
@@ -50,6 +52,8 @@ ZWECK_MUSTER = [
     r"verarbeitungszweck",
     r"zu\s+folgenden\s+zwecken",
     r"wir\s+verarbeiten\s+ihre\s+daten\s+(?:für|zu)",
+    r"(?:nutzen|verwenden)\s+(?:ihre|deine)\s+(?:daten|angaben)(?:,)?\s*(?:für|zu|um)\b",
+    r"(?:daten|angaben)\s+werden\s+(?:zur|für)(?:(?!\.).){0,40}?(?:genutzt|verwendet|verarbeitet)",
 ]
 
 RECHTSGRUNDLAGE_MUSTER = [
@@ -67,10 +71,13 @@ SPEICHERDAUER_MUSTER = [
     r"l(?:ö|oe)schfrist(?:en)?",
     r"kriterien\s+f(?:ü|ue)r\s+die\s+festlegung\s+der\s+speicherdauer",
     r"solange\s+(?:dies\s+)?(?:erforderlich|notwendig)",
-    # Konkrete Fristangabe ("für die Dauer von 3 Jahren ... gespeichert"),
-    # in beiden Reihenfolgen, begrenzt auf denselben Satz (kein Punkt dazwischen).
-    r"dauer\s+von\s+\d+\s+(?:jahren?|monaten?|wochen?|tagen?)(?:(?!\.).){0,50}?(?:gespeichert|aufbewahrt|speicherung)",
-    r"(?:gespeichert|aufbewahrt|speicherung)(?:(?!\.).){0,50}?dauer\s+von\s+\d+\s+(?:jahren?|monaten?|wochen?|tagen?)",
+    # Konkrete Fristangabe (Zahl + Zeiteinheit) in der Nähe eines
+    # Speicher-Begriffs, in beiden Reihenfolgen - deckt sowohl "für die
+    # Dauer von 3 Jahren ... gespeichert" als auch "Speicherung erfolgt
+    # für maximal 12 Monate" ab. Begrenzt auf denselben Satz (kein Punkt
+    # zwischen Zahl und Speicher-Begriff).
+    r"\d+\s+(?:jahren?|monaten?|wochen?|tagen?)(?:(?!\.).){0,50}?(?:gespeichert|aufbewahrt|speicherung)",
+    r"(?:gespeichert|aufbewahrt|speicherung)(?:(?!\.).){0,50}?\d+\s+(?:jahren?|monaten?|wochen?|tagen?)",
 ]
 
 # Art. 13 Abs. 2 lit. b verlangt einen Hinweis auf Betroffenenrechte allgemein;
@@ -101,12 +108,15 @@ def pruefe_verantwortlicher(text: str) -> Pruefergebnis:
     bezeichner_treffer = _sucht_muster(text, VERANTWORTLICHER_MUSTER)
     kontakt_treffer = _sucht_muster(text, KONTAKT_MUSTER)
     gefunden = bool(bezeichner_treffer) and bool(kontakt_treffer)
+    # Treffer nur bei gefunden=True zeigen - sonst wirkt ein FEHLT-Ergebnis
+    # inkonsistent, wenn nur einer der beiden Teile (Bezeichner ODER
+    # Kontaktdaten) etwas gefunden hat.
     return Pruefergebnis(
         id="verantwortlicher",
         name="Verantwortlicher (Name/Kontaktdaten)",
         artikel="Art. 13 Abs. 1 lit. a DSGVO",
         gefunden=gefunden,
-        treffer=bezeichner_treffer + kontakt_treffer,
+        treffer=bezeichner_treffer + kontakt_treffer if gefunden else [],
     )
 
 

@@ -25,7 +25,12 @@ Beispiel:
 ```bash
 python3 dsgvo_checker.py examples/beispiel_vollstaendig.md
 python3 dsgvo_checker.py examples/beispiel_unvollstaendig.md
+python3 dsgvo_checker.py examples/beispiel_teilweise.md
 ```
+
+`beispiel_teilweise.md` enthält vier der fünf Pflichtangaben und lässt
+bewusst die Rechtsgrundlage aus — nützlich, um den Grenzfall zwischen
+"alles" und "nichts" zu testen.
 
 Der Report zeigt pro Pflichtangabe, ob sie gefunden wurde und welche
 Textstellen den Treffer ausgelöst haben.
@@ -52,7 +57,7 @@ Voraussetzung: Python 3.9+ (keine externen Abhängigkeiten).
    python3 -m unittest discover -s tests -v
    ```
 
-   Erwartung: alle Tests laufen mit `OK` durch (Stand: 43 Tests).
+   Erwartung: alle Tests laufen mit `OK` durch (Stand: 45 Tests).
 
 2. **Smoke-Test gegen die Beispieldateien** – prüft den Report und den
    Exit-Code an einem bekannten Fall:

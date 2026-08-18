@@ -177,6 +177,14 @@ class GesamtreportTest(unittest.TestCase):
         ergebnisse = pruefe_datenschutzerklaerung("")
         self.assertTrue(all(not e.gefunden for e in ergebnisse))
 
+    def test_teilweise_erklaerung_liefert_vier_von_fuenf_treffern(self):
+        # examples/beispiel_teilweise.md nennt bewusst keine Rechtsgrundlage -
+        # alle anderen vier Pflichtangaben sind enthalten.
+        pfad = PROJEKT_ROOT / "examples" / "beispiel_teilweise.md"
+        ergebnisse = pruefe_datenschutzerklaerung(lade_datenschutzerklaerung(pfad))
+        fehlende = [e.id for e in ergebnisse if not e.gefunden]
+        self.assertEqual(fehlende, ["rechtsgrundlage"])
+
 
 class LadeDatenschutzerklaerungTest(unittest.TestCase):
     def setUp(self):
@@ -235,6 +243,12 @@ class CliTest(unittest.TestCase):
         ergebnis = self._lauf("examples/beispiel_unvollstaendig.md")
         self.assertEqual(ergebnis.returncode, 1)
         self.assertIn("0/5 Pflichtangaben gefunden", ergebnis.stdout)
+
+    def test_exit_code_1_bei_teilweise_vollstaendiger_erklaerung(self):
+        ergebnis = self._lauf("examples/beispiel_teilweise.md")
+        self.assertEqual(ergebnis.returncode, 1)
+        self.assertIn("4/5 Pflichtangaben gefunden", ergebnis.stdout)
+        self.assertIn("FEHLT", ergebnis.stdout)
 
     def test_json_ausgabe_ist_valides_json_mit_fuenf_eintraegen(self):
         ergebnis = self._lauf("--json", "examples/beispiel_vollstaendig.md")

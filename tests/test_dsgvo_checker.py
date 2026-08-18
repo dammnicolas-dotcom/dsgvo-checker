@@ -290,8 +290,15 @@ class CliTest(unittest.TestCase):
             pdf_pfad = Path(tmp) / "erklaerung.pdf"
             pdf_pfad.write_text("Zweck der Verarbeitung ist Marketing.", encoding="utf-8")
             ergebnis = self._lauf(str(pdf_pfad))
-        self.assertNotEqual(ergebnis.returncode, 0)
+        self.assertEqual(ergebnis.returncode, 1)
         self.assertIn("Nicht unterstütztes Dateiformat", ergebnis.stderr)
+        self.assertNotIn("Traceback", ergebnis.stderr)
+
+    def test_fehlende_datei_bricht_mit_klarer_fehlermeldung_ab(self):
+        ergebnis = self._lauf("pfad/zu/nicht_vorhandener_datei.md")
+        self.assertEqual(ergebnis.returncode, 1)
+        self.assertIn("Datei nicht gefunden", ergebnis.stderr)
+        self.assertNotIn("Traceback", ergebnis.stderr)
 
 
 if __name__ == "__main__":

@@ -65,7 +65,7 @@ Voraussetzung: Python 3.9+ (keine externen Abhängigkeiten).
    python3 -m unittest discover -s tests -v
    ```
 
-   Erwartung: alle Tests laufen mit `OK` durch (Stand: 47 Tests).
+   Erwartung: alle Tests laufen mit `OK` durch (Stand: 48 Tests).
 
 2. **Smoke-Test gegen die Beispieldateien** – prüft den Report und den
    Exit-Code an einem bekannten Fall:

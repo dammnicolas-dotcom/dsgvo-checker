@@ -193,7 +193,15 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    text = lade_datenschutzerklaerung(args.pfad)
+    try:
+        text = lade_datenschutzerklaerung(args.pfad)
+    except FileNotFoundError:
+        print(f"Fehler: Datei nicht gefunden: {args.pfad}", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as fehler:
+        print(f"Fehler: {fehler}", file=sys.stderr)
+        sys.exit(1)
+
     ergebnisse = pruefe_datenschutzerklaerung(text)
 
     if args.json:

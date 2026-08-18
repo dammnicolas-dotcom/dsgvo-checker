@@ -21,10 +21,24 @@ class VerantwortlicherTest(unittest.TestCase):
         text = "Verantwortlicher im Sinne der DSGVO: Max Mustermann, Musterstraße 1, kontakt@example.com"
         self.assertTrue(pruefe_verantwortlicher(text).gefunden)
 
+    def test_gefunden_ueber_kontaktdaten_des_verantwortlichen(self):
+        text = "Kontaktdaten des Verantwortlichen: Max Mustermann, Telefon: 030 1234567"
+        self.assertTrue(pruefe_verantwortlicher(text).gefunden)
+
+    def test_gefunden_ueber_verantwortliche_stelle_mit_adresse(self):
+        text = "Verantwortliche Stelle ist die Musterfirma GmbH, Musterstraße 5, 12345 Musterstadt."
+        self.assertTrue(pruefe_verantwortlicher(text).gefunden)
+
     def test_fehlt_ohne_kontaktdaten(self):
         # Bezeichnung allein reicht nicht - Art. 13 Abs. 1 lit. a fordert
         # zusätzlich konkrete Kontaktangaben.
         text = "Der Verantwortliche im Sinne der DSGVO informiert Sie hiermit."
+        self.assertFalse(pruefe_verantwortlicher(text).gefunden)
+
+    def test_fehlt_bei_kontaktdaten_ohne_bezeichnung(self):
+        # Kontaktdaten allein (z.B. ein allgemeines Impressum) reichen nicht -
+        # es muss erkennbar sein, dass es sich um den Verantwortlichen handelt.
+        text = "Erreichen Sie uns unter kontakt@example.com oder telefonisch."
         self.assertFalse(pruefe_verantwortlicher(text).gefunden)
 
     def test_fehlt_ganz_ohne_hinweis(self):
@@ -32,12 +46,30 @@ class VerantwortlicherTest(unittest.TestCase):
 
 
 class ZweckTest(unittest.TestCase):
-    def test_gefunden(self):
+    def test_gefunden_ueber_zweck_der_verarbeitung(self):
         text = "Der Zweck der Verarbeitung ist die Bearbeitung Ihrer Anfrage."
+        self.assertTrue(pruefe_zweck(text).gefunden)
+
+    def test_gefunden_ueber_verarbeitungszweck(self):
+        text = "Der Verarbeitungszweck ergibt sich aus dem jeweiligen Kontaktanlass."
+        self.assertTrue(pruefe_zweck(text).gefunden)
+
+    def test_gefunden_ueber_zu_folgenden_zwecken(self):
+        text = "Ihre Daten werden zu folgenden Zwecken verarbeitet: Vertragsabwicklung und Support."
+        self.assertTrue(pruefe_zweck(text).gefunden)
+
+    def test_gefunden_ueber_wir_verarbeiten_ihre_daten_fuer(self):
+        text = "Wir verarbeiten Ihre Daten für die Zusendung unseres Newsletters."
         self.assertTrue(pruefe_zweck(text).gefunden)
 
     def test_fehlt(self):
         self.assertFalse(pruefe_zweck("Wir nehmen Datenschutz ernst.").gefunden)
+
+    def test_fehlt_bei_verarbeiten_ohne_zweckangabe(self):
+        # Bloße Erwähnung von "verarbeiten" ohne Zweck- oder Grund-Bezug
+        # darf keinen falschen Treffer auslösen.
+        text = "Wir verarbeiten Ihre Daten mit größter Sorgfalt."
+        self.assertFalse(pruefe_zweck(text).gefunden)
 
 
 class RechtsgrundlageTest(unittest.TestCase):
@@ -45,8 +77,22 @@ class RechtsgrundlageTest(unittest.TestCase):
         text = "Rechtsgrundlage der Verarbeitung ist Art. 6 Abs. 1 lit. b DSGVO."
         self.assertTrue(pruefe_rechtsgrundlage(text).gefunden)
 
+    def test_gefunden_ueber_rechtliche_grundlage(self):
+        text = "Die rechtliche Grundlage für die Datenverarbeitung ist Ihre Einwilligung."
+        self.assertTrue(pruefe_rechtsgrundlage(text).gefunden)
+
+    def test_gefunden_ueber_artikelverweis_ohne_punkte(self):
+        text = "Grundlage der Verarbeitung ist Art 6 Abs 1 DSGVO."
+        self.assertTrue(pruefe_rechtsgrundlage(text).gefunden)
+
     def test_fehlt(self):
         self.assertFalse(pruefe_rechtsgrundlage("Wir verarbeiten Ihre Daten sorgfältig.").gefunden)
+
+    def test_fehlt_bei_anderem_artikel_verweis(self):
+        # Ein Verweis auf einen anderen DSGVO-Artikel ist kein Hinweis auf
+        # die Rechtsgrundlage der Verarbeitung.
+        text = "Weitere Informationen finden Sie in Art. 12 DSGVO."
+        self.assertFalse(pruefe_rechtsgrundlage(text).gefunden)
 
 
 class SpeicherdauerTest(unittest.TestCase):
@@ -79,8 +125,24 @@ class BetroffenenrechteTest(unittest.TestCase):
         text = "Betroffenenrechte: Sie haben verschiedene Rechte bezüglich Ihrer Daten."
         self.assertTrue(pruefe_betroffenenrechte(text).gefunden)
 
+    def test_gefunden_ueber_rechte_der_betroffenen_person(self):
+        text = "Rechte der betroffenen Person: Im Folgenden informieren wir Sie über Ihre Rechte."
+        self.assertTrue(pruefe_betroffenenrechte(text).gefunden)
+
     def test_gefunden_ueber_mindestens_zwei_einzelrechte(self):
         text = "Sie haben ein Recht auf Auskunft und ein Recht auf Löschung."
+        self.assertTrue(pruefe_betroffenenrechte(text).gefunden)
+
+    def test_gefunden_ueber_berichtigung_und_einschraenkung(self):
+        text = "Ihnen stehen ein Recht auf Berichtigung sowie ein Recht auf Einschränkung der Verarbeitung zu."
+        self.assertTrue(pruefe_betroffenenrechte(text).gefunden)
+
+    def test_gefunden_ueber_widerspruch_und_widerruf(self):
+        text = "Sie haben ein Recht auf Widerspruch sowie ein Recht auf Widerruf Ihrer Einwilligung."
+        self.assertTrue(pruefe_betroffenenrechte(text).gefunden)
+
+    def test_gefunden_ueber_datenuebertragbarkeit_und_auskunft(self):
+        text = "Es besteht ein Recht auf Datenübertragbarkeit und ein Recht auf Auskunft."
         self.assertTrue(pruefe_betroffenenrechte(text).gefunden)
 
     def test_fehlt_bei_nur_einem_einzelrecht(self):

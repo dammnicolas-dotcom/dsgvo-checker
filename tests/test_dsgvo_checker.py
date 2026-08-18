@@ -93,6 +93,26 @@ class RechtsgrundlageTest(unittest.TestCase):
     def test_fehlt(self):
         self.assertFalse(pruefe_rechtsgrundlage("Wir verarbeiten Ihre Daten sorgfältig.").gefunden)
 
+    def test_fehlt_bei_agb_kontext_mit_geschaeftsbedingungen(self):
+        # "Rechtsgrundlage" im Kontext der AGB ist keine Rechtsgrundlage der
+        # Datenverarbeitung im Sinne von Art. 13 Abs. 1 lit. c DSGVO.
+        text = "Die Rechtsgrundlage für unsere allgemeinen Geschäftsbedingungen finden Sie in unserem Kundenportal."
+        self.assertFalse(pruefe_rechtsgrundlage(text).gefunden)
+
+    def test_fehlt_bei_agb_kontext_mit_abkuerzung(self):
+        text = "Die Rechtsgrundlage unserer AGB können Sie im Impressum nachlesen."
+        self.assertFalse(pruefe_rechtsgrundlage(text).gefunden)
+
+    def test_gefunden_trotz_agb_erwaehnung_an_anderer_stelle(self):
+        # Der AGB-Ausschluss darf nicht zu weit greifen: taucht "AGB" weit
+        # entfernt von "Rechtsgrundlage" (jenseits des Lookahead-Fensters
+        # bzw. hinter einem Satzende) auf, muss der Treffer erhalten bleiben.
+        text = (
+            "Rechtsgrundlage der Verarbeitung ist Art. 6 Abs. 1 lit. b DSGVO. "
+            "Unsere AGB finden Sie separat im Kundenportal."
+        )
+        self.assertTrue(pruefe_rechtsgrundlage(text).gefunden)
+
     def test_fehlt_bei_anderem_artikel_verweis(self):
         # Ein Verweis auf einen anderen DSGVO-Artikel ist kein Hinweis auf
         # die Rechtsgrundlage der Verarbeitung.
@@ -197,14 +217,14 @@ class GrenzfaelleTest(unittest.TestCase):
         ergebnisse = pruefe_datenschutzerklaerung(lade_datenschutzerklaerung(pfad))
         self.assertTrue(all(not e.gefunden for e in ergebnisse))
 
-    def test_falscher_kontext_erzeugt_bekannten_falsch_positiven_treffer(self):
+    def test_falscher_kontext_erzeugt_keinen_treffer_mehr(self):
         # examples/beispiel_falscher_kontext.md erwähnt "Rechtsgrundlage" im
-        # Kontext der AGB statt der Datenverarbeitung - das generische Muster
-        # erkennt das fälschlich als Treffer. Bekannte Grenze, siehe README.
+        # Kontext der AGB statt der Datenverarbeitung. Der negative Lookahead
+        # in RECHTSGRUNDLAGE_MUSTER schließt diesen Fall inzwischen aus -
+        # Regressionstest für den ehemals bekannten falsch-positiven Treffer.
         pfad = PROJEKT_ROOT / "examples" / "beispiel_falscher_kontext.md"
         ergebnisse = pruefe_datenschutzerklaerung(lade_datenschutzerklaerung(pfad))
-        gefundene_ids = [e.id for e in ergebnisse if e.gefunden]
-        self.assertEqual(gefundene_ids, ["rechtsgrundlage"])
+        self.assertTrue(all(not e.gefunden for e in ergebnisse))
 
 
 class LadeDatenschutzerklaerungTest(unittest.TestCase):

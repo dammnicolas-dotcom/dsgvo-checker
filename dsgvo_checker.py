@@ -53,7 +53,10 @@ ZWECK_MUSTER = [
 ]
 
 RECHTSGRUNDLAGE_MUSTER = [
-    r"rechtsgrundlage(?:n)?",
+    # Negative Lookahead schließt "Rechtsgrundlage" im AGB-Kontext aus (z.B.
+    # "Rechtsgrundlage unserer AGB") - das ist keine Rechtsgrundlage der
+    # Datenverarbeitung im Sinne von Art. 13 Abs. 1 lit. c DSGVO.
+    r"rechtsgrundlage(?:n)?(?!(?:(?!\.).){0,50}?(?:\bagb\b|geschäftsbedingungen))",
     r"rechtliche\s+grundlage",
     r"art\.?\s*6\s*abs\.?\s*1",
 ]

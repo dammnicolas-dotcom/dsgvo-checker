@@ -1,0 +1,183 @@
+"""Regelbasierter Checker für Pflichtangaben einer Datenschutzerklärung nach Art. 13 DSGVO.
+
+Kein LLM-Aufruf: die Prüfung erfolgt ausschließlich über Keyword-/Regex-Muster,
+analog zur Fristberechnung in frist_berechnung.py.
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+
+
+@dataclass
+class Pruefergebnis:
+    id: str
+    name: str
+    artikel: str
+    gefunden: bool
+    treffer: list[str] = field(default_factory=list)
+
+
+def _sucht_muster(text: str, muster: list[str]) -> list[str]:
+    treffer = []
+    for pattern in muster:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            treffer.append(match.group(0).strip())
+    return treffer
+
+
+VERANTWORTLICHER_MUSTER = [
+    r"verantwortlich(?:e|er|en)?\s+(?:im\s+sinne\s+der\s+dsgvo|f(?:ü|ue)r\s+die\s+(?:daten-?verarbeitung|verarbeitung))",
+    r"kontaktdaten\s+des\s+verantwortlichen",
+    r"verantwortliche\s+stelle",
+]
+# Reine Nennung von "verantwortlich" reicht nicht - es braucht zusätzlich
+# tatsächliche Kontaktangaben (Art. 13 Abs. 1 lit. a fordert Name UND Kontaktdaten).
+KONTAKT_MUSTER = [
+    r"[\w.+-]+@[\w-]+\.[a-z]{2,}",
+    r"(?:tel\.?|telefon)\s*:?\s*[+\d]",
+    r"stra(?:ß|ss)e\s+\d+",
+]
+
+ZWECK_MUSTER = [
+    r"zwecke?\s+der\s+(?:daten-?)?verarbeitung",
+    r"verarbeitungszweck",
+    r"zu\s+folgenden\s+zwecken",
+    r"wir\s+verarbeiten\s+ihre\s+daten\s+(?:für|zu)",
+]
+
+RECHTSGRUNDLAGE_MUSTER = [
+    r"rechtsgrundlage(?:n)?",
+    r"rechtliche\s+grundlage",
+    r"art\.?\s*6\s*abs\.?\s*1",
+]
+
+SPEICHERDAUER_MUSTER = [
+    r"speicherdauer",
+    r"dauer\s+der\s+speicherung",
+    r"l(?:ö|oe)schfrist(?:en)?",
+    r"kriterien\s+f(?:ü|ue)r\s+die\s+festlegung\s+der\s+speicherdauer",
+    r"solange\s+(?:dies\s+)?(?:erforderlich|notwendig)",
+]
+
+# Art. 13 Abs. 2 lit. b verlangt einen Hinweis auf Betroffenenrechte allgemein;
+# eine generische Überschrift reicht, ersatzweise müssen mindestens zwei
+# einzelne Rechte konkret benannt sein.
+BETROFFENENRECHTE_GENERISCH_MUSTER = [
+    r"betroffenenrechte",
+    r"ihre\s+rechte\s+als\s+betroffene",
+    r"rechte\s+der\s+betroffenen\s+person",
+]
+EINZELRECHTE_MUSTER = [
+    r"recht\s+auf\s+auskunft",
+    r"recht\s+auf\s+berichtigung",
+    r"recht\s+auf\s+l(?:ö|oe)schung",
+    r"recht\s+auf\s+einschr(?:ä|ae)nkung",
+    r"recht\s+auf\s+widerspruch",
+    r"recht\s+auf\s+daten(?:ü|ue)bertragbarkeit",
+    r"recht\s+auf\s+widerruf",
+]
+
+
+def pruefe_verantwortlicher(text: str) -> Pruefergebnis:
+    bezeichner_treffer = _sucht_muster(text, VERANTWORTLICHER_MUSTER)
+    kontakt_treffer = _sucht_muster(text, KONTAKT_MUSTER)
+    gefunden = bool(bezeichner_treffer) and bool(kontakt_treffer)
+    return Pruefergebnis(
+        id="verantwortlicher",
+        name="Verantwortlicher (Name/Kontaktdaten)",
+        artikel="Art. 13 Abs. 1 lit. a DSGVO",
+        gefunden=gefunden,
+        treffer=bezeichner_treffer + kontakt_treffer,
+    )
+
+
+def pruefe_zweck(text: str) -> Pruefergebnis:
+    treffer = _sucht_muster(text, ZWECK_MUSTER)
+    return Pruefergebnis(
+        id="zweck",
+        name="Zweck der Verarbeitung",
+        artikel="Art. 13 Abs. 1 lit. c DSGVO",
+        gefunden=bool(treffer),
+        treffer=treffer,
+    )
+
+
+def pruefe_rechtsgrundlage(text: str) -> Pruefergebnis:
+    treffer = _sucht_muster(text, RECHTSGRUNDLAGE_MUSTER)
+    return Pruefergebnis(
+        id="rechtsgrundlage",
+        name="Rechtsgrundlage der Verarbeitung",
+        artikel="Art. 13 Abs. 1 lit. c DSGVO",
+        gefunden=bool(treffer),
+        treffer=treffer,
+    )
+
+
+def pruefe_speicherdauer(text: str) -> Pruefergebnis:
+    treffer = _sucht_muster(text, SPEICHERDAUER_MUSTER)
+    return Pruefergebnis(
+        id="speicherdauer",
+        name="Speicherdauer bzw. Kriterien für deren Festlegung",
+        artikel="Art. 13 Abs. 2 lit. a DSGVO",
+        gefunden=bool(treffer),
+        treffer=treffer,
+    )
+
+
+def pruefe_betroffenenrechte(text: str) -> Pruefergebnis:
+    generisch_treffer = _sucht_muster(text, BETROFFENENRECHTE_GENERISCH_MUSTER)
+    einzelrechte_treffer = _sucht_muster(text, EINZELRECHTE_MUSTER)
+    gefunden = bool(generisch_treffer) or len(einzelrechte_treffer) >= 2
+    return Pruefergebnis(
+        id="betroffenenrechte",
+        name="Hinweis auf Betroffenenrechte",
+        artikel="Art. 13 Abs. 2 lit. b DSGVO",
+        gefunden=gefunden,
+        treffer=generisch_treffer + einzelrechte_treffer,
+    )
+
+
+ALLE_PRUEFUNGEN = [
+    pruefe_verantwortlicher,
+    pruefe_zweck,
+    pruefe_rechtsgrundlage,
+    pruefe_speicherdauer,
+    pruefe_betroffenenrechte,
+]
+
+
+def pruefe_datenschutzerklaerung(text: str) -> list[Pruefergebnis]:
+    return [pruefung(text) for pruefung in ALLE_PRUEFUNGEN]
+
+
+def formatiere_report(ergebnisse: list[Pruefergebnis]) -> str:
+    zeilen = ["DSGVO-Checker – Prüfbericht (Art. 13 DSGVO, MVP-Scope)", "=" * 55]
+    for ergebnis in ergebnisse:
+        status = "OK    " if ergebnis.gefunden else "FEHLT "
+        zeilen.append(f"[{status}] {ergebnis.name} ({ergebnis.artikel})")
+        if ergebnis.treffer:
+            eindeutige_treffer = sorted(set(ergebnis.treffer))
+            zeilen.append(f"         Treffer: {', '.join(eindeutige_treffer)}")
+    anzahl_gefunden = sum(1 for ergebnis in ergebnisse if ergebnis.gefunden)
+    zeilen.append("-" * 55)
+    zeilen.append(f"{anzahl_gefunden}/{len(ergebnisse)} Pflichtangaben gefunden.")
+    return "\n".join(zeilen)
+
+
+def main() -> None:
+    if len(sys.argv) != 2:
+        print("Nutzung: python dsgvo_checker.py <pfad-zur-datenschutzerklaerung>")
+        sys.exit(1)
+    pfad = Path(sys.argv[1])
+    text = pfad.read_text(encoding="utf-8")
+    ergebnisse = pruefe_datenschutzerklaerung(text)
+    print(formatiere_report(ergebnisse))
+
+
+if __name__ == "__main__":
+    main()

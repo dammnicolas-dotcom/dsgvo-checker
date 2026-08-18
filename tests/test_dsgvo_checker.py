@@ -268,6 +268,30 @@ class GesamtreportTest(unittest.TestCase):
         self.assertEqual(fehlende, ["rechtsgrundlage"])
 
 
+class EigeneTestsTest(unittest.TestCase):
+    """Regressionstests für die vom Nutzer eingereichten Dateien in eigene_tests/,
+    die ursprünglich die Lücken bei Speicherdauer/Betroffenenrechte aufdeckten."""
+
+    def test_vollstaendig_liefert_fuenf_von_fuenf(self):
+        pfad = PROJEKT_ROOT / "eigene_tests" / "test_vollstaendig.md"
+        ergebnisse = pruefe_datenschutzerklaerung(lade_datenschutzerklaerung(pfad))
+        self.assertTrue(all(e.gefunden for e in ergebnisse))
+
+    def test_unvollstaendig_liefert_drei_von_fuenf(self):
+        # Rechtsgrundlage fehlt bewusst; Betroffenenrechte bleibt eine bekannte
+        # Paraphrasierungs-Lücke (Rechte-Nennung ohne "Recht auf"), siehe README.
+        pfad = PROJEKT_ROOT / "eigene_tests" / "test_unvollstaendig.md"
+        ergebnisse = pruefe_datenschutzerklaerung(lade_datenschutzerklaerung(pfad))
+        fehlende = [e.id for e in ergebnisse if not e.gefunden]
+        self.assertEqual(sorted(fehlende), ["betroffenenrechte", "rechtsgrundlage"])
+
+    def test_umformuliert_liefert_zwei_von_fuenf(self):
+        pfad = PROJEKT_ROOT / "eigene_tests" / "test_umformuliert.md"
+        ergebnisse = pruefe_datenschutzerklaerung(lade_datenschutzerklaerung(pfad))
+        gefundene_ids = [e.id for e in ergebnisse if e.gefunden]
+        self.assertEqual(sorted(gefundene_ids), ["verantwortlicher", "zweck"])
+
+
 class GrenzfaelleTest(unittest.TestCase):
     """Pinnt bekannte Grenzen der Muster-basierten Erkennung (siehe README)."""
 

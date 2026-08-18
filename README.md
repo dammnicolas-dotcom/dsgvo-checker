@@ -40,6 +40,13 @@ python3 dsgvo_checker.py examples/beispiel_umformuliert.md
 python3 dsgvo_checker.py examples/beispiel_falscher_kontext.md
 ```
 
+In `eigene_tests/` liegen zusätzlich drei real formulierte Testdateien
+(`test_vollstaendig.md`, `test_unvollstaendig.md`, `test_umformuliert.md`),
+die beim manuellen Testen mehrere blinde Flecken der Muster aufgedeckt
+und zu konkreten Regex-Erweiterungen geführt haben. Sie sind als
+Regressionstests in `tests/test_dsgvo_checker.py::EigeneTestsTest`
+gepinnt.
+
 Der Report zeigt pro Pflichtangabe, ob sie gefunden wurde und welche
 Textstellen den Treffer ausgelöst haben.
 
@@ -65,7 +72,7 @@ Voraussetzung: Python 3.9+ (keine externen Abhängigkeiten).
    python3 -m unittest discover -s tests -v
    ```
 
-   Erwartung: alle Tests laufen mit `OK` durch (Stand: 59 Tests).
+   Erwartung: alle Tests laufen mit `OK` durch (Stand: 62 Tests).
 
 2. **Smoke-Test gegen die Beispieldateien** – prüft den Report und den
    Exit-Code an einem bekannten Fall:

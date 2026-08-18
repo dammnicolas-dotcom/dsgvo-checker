@@ -32,6 +32,14 @@ python3 dsgvo_checker.py examples/beispiel_teilweise.md
 bewusst die Rechtsgrundlage aus — nützlich, um den Grenzfall zwischen
 "alles" und "nichts" zu testen.
 
+Zwei weitere Beispiele zeigen bewusst die Grenzen der Muster-Erkennung
+(siehe auch Abschnitt "Grenzen (MVP)" unten):
+
+```bash
+python3 dsgvo_checker.py examples/beispiel_umformuliert.md
+python3 dsgvo_checker.py examples/beispiel_falscher_kontext.md
+```
+
 Der Report zeigt pro Pflichtangabe, ob sie gefunden wurde und welche
 Textstellen den Treffer ausgelöst haben.
 
@@ -57,7 +65,7 @@ Voraussetzung: Python 3.9+ (keine externen Abhängigkeiten).
    python3 -m unittest discover -s tests -v
    ```
 
-   Erwartung: alle Tests laufen mit `OK` durch (Stand: 45 Tests).
+   Erwartung: alle Tests laufen mit `OK` durch (Stand: 47 Tests).
 
 2. **Smoke-Test gegen die Beispieldateien** – prüft den Report und den
    Exit-Code an einem bekannten Fall:
@@ -87,3 +95,20 @@ Voraussetzung: Python 3.9+ (keine externen Abhängigkeiten).
 Der Checker erkennt Muster, keine juristische Vollständigkeit oder
 inhaltliche Richtigkeit. Ein "OK" bedeutet: ein passendes Muster wurde
 gefunden — nicht, dass die Datenschutzerklärung DSGVO-konform ist.
+
+Zwei konkrete, bewusst angelegte Grenzfälle (als Regressionstests in
+`tests/test_dsgvo_checker.py::GrenzfaelleTest` gepinnt):
+
+- **Falsch-negativ** (`examples/beispiel_umformuliert.md`): Der Text ist
+  inhaltlich vertretbar vollständig, verwendet aber durchgehend
+  Formulierungen abseits der hinterlegten Muster (z.B. "Betreiber dieser
+  Seite" statt "Verantwortlicher") und wird deshalb mit 0/5 bewertet.
+- **Falsch-positiv** (`examples/beispiel_falscher_kontext.md`): Das Wort
+  "Rechtsgrundlage" taucht im Kontext der AGB auf, nicht der
+  Datenverarbeitung — das generische Muster erkennt es trotzdem als
+  Treffer.
+
+Beide Fälle sind erwartetes Verhalten eines Keyword-/Regex-Ansatzes ohne
+semantisches Verständnis, keine Bugs. Sie zeigen, wo künftige
+Mustererweiterungen (Falsch-negativ) bzw. Kontextprüfungen
+(Falsch-positiv) ansetzen könnten.

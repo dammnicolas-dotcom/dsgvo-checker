@@ -186,6 +186,27 @@ class GesamtreportTest(unittest.TestCase):
         self.assertEqual(fehlende, ["rechtsgrundlage"])
 
 
+class GrenzfaelleTest(unittest.TestCase):
+    """Pinnt bekannte Grenzen der Muster-basierten Erkennung (siehe README)."""
+
+    def test_umformulierter_text_wird_trotz_plausiblem_inhalt_nicht_erkannt(self):
+        # examples/beispiel_umformuliert.md ist inhaltlich vertretbar vollständig,
+        # nutzt aber durchgehend Formulierungen abseits der Regex-Muster - ein
+        # bekannter falsch-negativer Grenzfall, kein Bug.
+        pfad = PROJEKT_ROOT / "examples" / "beispiel_umformuliert.md"
+        ergebnisse = pruefe_datenschutzerklaerung(lade_datenschutzerklaerung(pfad))
+        self.assertTrue(all(not e.gefunden for e in ergebnisse))
+
+    def test_falscher_kontext_erzeugt_bekannten_falsch_positiven_treffer(self):
+        # examples/beispiel_falscher_kontext.md erwähnt "Rechtsgrundlage" im
+        # Kontext der AGB statt der Datenverarbeitung - das generische Muster
+        # erkennt das fälschlich als Treffer. Bekannte Grenze, siehe README.
+        pfad = PROJEKT_ROOT / "examples" / "beispiel_falscher_kontext.md"
+        ergebnisse = pruefe_datenschutzerklaerung(lade_datenschutzerklaerung(pfad))
+        gefundene_ids = [e.id for e in ergebnisse if e.gefunden]
+        self.assertEqual(gefundene_ids, ["rechtsgrundlage"])
+
+
 class LadeDatenschutzerklaerungTest(unittest.TestCase):
     def setUp(self):
         self._tmp_verzeichnis = tempfile.TemporaryDirectory()

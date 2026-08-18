@@ -3,6 +3,7 @@
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from dsgvo_checker import (
     pruefe_speicherdauer,
     pruefe_betroffenenrechte,
     pruefe_datenschutzerklaerung,
+    lade_datenschutzerklaerung,
 )
 
 
@@ -176,6 +178,45 @@ class GesamtreportTest(unittest.TestCase):
         self.assertTrue(all(not e.gefunden for e in ergebnisse))
 
 
+class LadeDatenschutzerklaerungTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp_verzeichnis = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp_verzeichnis.cleanup)
+        self.tmp_pfad = Path(self._tmp_verzeichnis.name)
+
+    def _schreibe_datei(self, dateiname: str, inhalt: str) -> Path:
+        pfad = self.tmp_pfad / dateiname
+        pfad.write_text(inhalt, encoding="utf-8")
+        return pfad
+
+    def test_laedt_txt_datei(self):
+        pfad = self._schreibe_datei("erklaerung.txt", "Zweck der Verarbeitung ist Marketing.")
+        self.assertEqual(lade_datenschutzerklaerung(pfad), "Zweck der Verarbeitung ist Marketing.")
+
+    def test_laedt_md_datei(self):
+        pfad = self._schreibe_datei("erklaerung.md", "## Zweck\nZweck der Verarbeitung ist Marketing.")
+        self.assertIn("Zweck der Verarbeitung", lade_datenschutzerklaerung(pfad))
+
+    def test_laedt_md_endung_gross_geschrieben(self):
+        # Dateiendungen sollen unabhängig von Groß-/Kleinschreibung erkannt werden.
+        pfad = self._schreibe_datei("erklaerung.MD", "Zweck der Verarbeitung ist Marketing.")
+        self.assertTrue(lade_datenschutzerklaerung(pfad))
+
+    def test_laedt_umlaute_korrekt_als_utf8(self):
+        pfad = self._schreibe_datei("erklaerung.txt", "Speicherdauer, Löschfristen, Übertragbarkeit")
+        self.assertIn("Löschfristen", lade_datenschutzerklaerung(pfad))
+
+    def test_fehler_bei_nicht_unterstuetzter_endung(self):
+        pfad = self._schreibe_datei("erklaerung.pdf", "Zweck der Verarbeitung ist Marketing.")
+        with self.assertRaises(ValueError):
+            lade_datenschutzerklaerung(pfad)
+
+    def test_fehler_bei_fehlender_datei(self):
+        pfad = self.tmp_pfad / "existiert_nicht.txt"
+        with self.assertRaises(FileNotFoundError):
+            lade_datenschutzerklaerung(pfad)
+
+
 class CliTest(unittest.TestCase):
     def _lauf(self, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(
@@ -208,6 +249,14 @@ class CliTest(unittest.TestCase):
         self.assertEqual(ergebnis.returncode, 1)
         daten = json.loads(ergebnis.stdout)
         self.assertTrue(all(not eintrag["gefunden"] for eintrag in daten))
+
+    def test_nicht_unterstuetzte_endung_bricht_mit_fehler_ab(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pdf_pfad = Path(tmp) / "erklaerung.pdf"
+            pdf_pfad.write_text("Zweck der Verarbeitung ist Marketing.", encoding="utf-8")
+            ergebnis = self._lauf(str(pdf_pfad))
+        self.assertNotEqual(ergebnis.returncode, 0)
+        self.assertIn("Nicht unterstütztes Dateiformat", ergebnis.stderr)
 
 
 if __name__ == "__main__":

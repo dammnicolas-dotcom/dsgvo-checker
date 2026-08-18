@@ -144,6 +144,18 @@ def pruefe_betroffenenrechte(text: str) -> Pruefergebnis:
     )
 
 
+UNTERSTUETZTE_ENDUNGEN = {".txt", ".md"}
+
+
+def lade_datenschutzerklaerung(pfad: Path) -> str:
+    if pfad.suffix.lower() not in UNTERSTUETZTE_ENDUNGEN:
+        endungen = ", ".join(sorted(UNTERSTUETZTE_ENDUNGEN))
+        raise ValueError(
+            f"Nicht unterstütztes Dateiformat '{pfad.suffix}'. Unterstützt werden: {endungen}."
+        )
+    return pfad.read_text(encoding="utf-8")
+
+
 ALLE_PRUEFUNGEN = [
     pruefe_verantwortlicher,
     pruefe_zweck,
@@ -181,7 +193,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    text = args.pfad.read_text(encoding="utf-8")
+    text = lade_datenschutzerklaerung(args.pfad)
     ergebnisse = pruefe_datenschutzerklaerung(text)
 
     if args.json:

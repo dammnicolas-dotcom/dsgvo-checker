@@ -144,6 +144,17 @@ class SpeicherdauerTest(unittest.TestCase):
         text = "Wir speichern Ihre Daten auf Servern in Deutschland."
         self.assertFalse(pruefe_speicherdauer(text).gefunden)
 
+    def test_gefunden_ueber_konkrete_frist_in_jahren(self):
+        # Blinder Fleck aus eigene_tests/test_vollstaendig.md: eine konkrete
+        # Fristangabe ("Dauer von 3 Jahren") ohne die Wörter "Speicherdauer"
+        # oder "Löschfrist" wurde bisher nicht erkannt.
+        text = (
+            "Ihre Daten werden für die Dauer von 3 Jahren nach Vertragsende "
+            "gespeichert, soweit keine gesetzlichen Aufbewahrungsfristen "
+            "entgegenstehen."
+        )
+        self.assertTrue(pruefe_speicherdauer(text).gefunden)
+
 
 class BetroffenenrechteTest(unittest.TestCase):
     def test_gefunden_ueber_generische_ueberschrift(self):
@@ -168,6 +179,16 @@ class BetroffenenrechteTest(unittest.TestCase):
 
     def test_gefunden_ueber_datenuebertragbarkeit_und_auskunft(self):
         text = "Es besteht ein Recht auf Datenübertragbarkeit und ein Recht auf Auskunft."
+        self.assertTrue(pruefe_betroffenenrechte(text).gefunden)
+
+    def test_gefunden_ueber_aufzaehlung_hinter_einem_recht_auf(self):
+        # Blinder Fleck aus eigene_tests/test_vollstaendig.md: eine Aufzählung
+        # mehrerer Rechte hinter einem einzigen "Recht auf" (statt je einmal
+        # pro Recht wiederholt) wurde bisher nur als 1 Einzelrecht gezählt.
+        text = (
+            "Sie haben das Recht auf Auskunft, Berichtigung, Löschung und "
+            "Widerspruch gegen die Verarbeitung Ihrer Daten gemäß Art. 15-21 DSGVO."
+        )
         self.assertTrue(pruefe_betroffenenrechte(text).gefunden)
 
     def test_fehlt_bei_nur_einem_einzelrecht(self):

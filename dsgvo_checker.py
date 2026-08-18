@@ -67,15 +67,24 @@ SPEICHERDAUER_MUSTER = [
     r"l(?:ö|oe)schfrist(?:en)?",
     r"kriterien\s+f(?:ü|ue)r\s+die\s+festlegung\s+der\s+speicherdauer",
     r"solange\s+(?:dies\s+)?(?:erforderlich|notwendig)",
+    # Konkrete Fristangabe ("für die Dauer von 3 Jahren ... gespeichert"),
+    # in beiden Reihenfolgen, begrenzt auf denselben Satz (kein Punkt dazwischen).
+    r"dauer\s+von\s+\d+\s+(?:jahren?|monaten?|wochen?|tagen?)(?:(?!\.).){0,50}?(?:gespeichert|aufbewahrt|speicherung)",
+    r"(?:gespeichert|aufbewahrt|speicherung)(?:(?!\.).){0,50}?dauer\s+von\s+\d+\s+(?:jahren?|monaten?|wochen?|tagen?)",
 ]
 
 # Art. 13 Abs. 2 lit. b verlangt einen Hinweis auf Betroffenenrechte allgemein;
 # eine generische Überschrift reicht, ersatzweise müssen mindestens zwei
 # einzelne Rechte konkret benannt sein.
+EINZELRECHT_NAMEN = r"(?:auskunft|berichtigung|l(?:ö|oe)schung|einschr(?:ä|ae)nkung|widerspruch|daten(?:ü|ue)bertragbarkeit|widerruf)"
+
 BETROFFENENRECHTE_GENERISCH_MUSTER = [
     r"betroffenenrechte",
     r"ihre\s+rechte\s+als\s+betroffene",
     r"rechte\s+der\s+betroffenen\s+person",
+    # Aufzählung mehrerer Rechte hinter einem einzigen "Recht auf"
+    # (z.B. "Recht auf Auskunft, Berichtigung, Löschung und Widerspruch").
+    rf"recht\s+auf\s+{EINZELRECHT_NAMEN}(?:\s*,\s*{EINZELRECHT_NAMEN})+\s*(?:und|sowie|oder)\s*{EINZELRECHT_NAMEN}",
 ]
 EINZELRECHTE_MUSTER = [
     r"recht\s+auf\s+auskunft",

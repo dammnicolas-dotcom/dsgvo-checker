@@ -6,9 +6,11 @@ analog zur Fristberechnung in frist_berechnung.py.
 
 from __future__ import annotations
 
+import argparse
+import json
 import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 
@@ -170,13 +172,27 @@ def formatiere_report(ergebnisse: list[Pruefergebnis]) -> str:
 
 
 def main() -> None:
-    if len(sys.argv) != 2:
-        print("Nutzung: python dsgvo_checker.py <pfad-zur-datenschutzerklaerung>")
-        sys.exit(1)
-    pfad = Path(sys.argv[1])
-    text = pfad.read_text(encoding="utf-8")
+    parser = argparse.ArgumentParser(
+        description="Prüft eine Datenschutzerklärung auf Pflichtangaben nach Art. 13 DSGVO."
+    )
+    parser.add_argument("pfad", type=Path, help="Pfad zur Datenschutzerklärung (.txt/.md)")
+    parser.add_argument(
+        "--json", action="store_true", help="Ausgabe als JSON statt als Textreport"
+    )
+    args = parser.parse_args()
+
+    text = args.pfad.read_text(encoding="utf-8")
     ergebnisse = pruefe_datenschutzerklaerung(text)
-    print(formatiere_report(ergebnisse))
+
+    if args.json:
+        print(json.dumps([asdict(ergebnis) for ergebnis in ergebnisse], ensure_ascii=False, indent=2))
+    else:
+        print(formatiere_report(ergebnisse))
+
+    # Exit-Code 0 nur, wenn alle Pflichtangaben gefunden wurden - damit lässt
+    # sich der Checker z.B. als CI-Gate für Datenschutzerklärungen nutzen.
+    alle_gefunden = all(ergebnis.gefunden for ergebnis in ergebnisse)
+    sys.exit(0 if alle_gefunden else 1)
 
 
 if __name__ == "__main__":

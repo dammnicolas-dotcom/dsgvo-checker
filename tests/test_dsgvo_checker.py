@@ -1,10 +1,13 @@
 """Tests für dsgvo_checker.py (Art. 13 DSGVO Pflichtangaben-Check)."""
 
+import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+PROJEKT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJEKT_ROOT))
 
 from dsgvo_checker import (
     pruefe_verantwortlicher,
@@ -171,6 +174,40 @@ class GesamtreportTest(unittest.TestCase):
     def test_leerer_text_liefert_keine_treffer(self):
         ergebnisse = pruefe_datenschutzerklaerung("")
         self.assertTrue(all(not e.gefunden for e in ergebnisse))
+
+
+class CliTest(unittest.TestCase):
+    def _lauf(self, *args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, "dsgvo_checker.py", *args],
+            cwd=PROJEKT_ROOT,
+            capture_output=True,
+            text=True,
+        )
+
+    def test_exit_code_0_bei_vollstaendiger_erklaerung(self):
+        ergebnis = self._lauf("examples/beispiel_vollstaendig.md")
+        self.assertEqual(ergebnis.returncode, 0)
+        self.assertIn("5/5 Pflichtangaben gefunden", ergebnis.stdout)
+
+    def test_exit_code_1_bei_unvollstaendiger_erklaerung(self):
+        ergebnis = self._lauf("examples/beispiel_unvollstaendig.md")
+        self.assertEqual(ergebnis.returncode, 1)
+        self.assertIn("0/5 Pflichtangaben gefunden", ergebnis.stdout)
+
+    def test_json_ausgabe_ist_valides_json_mit_fuenf_eintraegen(self):
+        ergebnis = self._lauf("--json", "examples/beispiel_vollstaendig.md")
+        self.assertEqual(ergebnis.returncode, 0)
+        daten = json.loads(ergebnis.stdout)
+        self.assertEqual(len(daten), 5)
+        self.assertTrue(all(eintrag["gefunden"] for eintrag in daten))
+        self.assertEqual(daten[0]["id"], "verantwortlicher")
+
+    def test_json_ausgabe_zeigt_fehlende_pflichtangaben(self):
+        ergebnis = self._lauf("--json", "examples/beispiel_unvollstaendig.md")
+        self.assertEqual(ergebnis.returncode, 1)
+        daten = json.loads(ergebnis.stdout)
+        self.assertTrue(all(not eintrag["gefunden"] for eintrag in daten))
 
 
 if __name__ == "__main__":

@@ -30,6 +30,16 @@ python3 dsgvo_checker.py examples/beispiel_unvollstaendig.md
 Der Report zeigt pro Pflichtangabe, ob sie gefunden wurde und welche
 Textstellen den Treffer ausgelöst haben.
 
+Für die maschinelle Weiterverarbeitung (z.B. in einer CI-Pipeline) gibt es
+eine JSON-Ausgabe:
+
+```bash
+python3 dsgvo_checker.py --json examples/beispiel_vollstaendig.md
+```
+
+Der Exit-Code ist `0`, wenn alle fünf Pflichtangaben gefunden wurden, sonst
+`1` — damit lässt sich der Checker als Gate in CI-Pipelines nutzen.
+
 ## Lokal testen
 
 Voraussetzung: Python 3.9+ (keine externen Abhängigkeiten).
